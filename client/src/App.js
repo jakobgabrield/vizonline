@@ -16,7 +16,7 @@ const App = () => {
       // const res = await axios.post("/run", {content: code, language: "viz", args: selectedOption});
       let result = "";
       if (typeof res.data === 'object') {
-        result = JSON.stringify(res.data);
+        result = JSON.stringify(res.data.error.error.stderr);
       } else {
         result = res.data;
       }
