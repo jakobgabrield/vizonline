@@ -7,18 +7,22 @@ const App = () => {
   const codeAreaRef = useRef();
   const [code, setCode] = useState("");
   const [result, setResult] = useState("");
-  const options = [{label: "Code Results", value: ""}, {label: "AST", value: "-a"}, {label: "SAST", value: "-s"}, {label: "LLVM IR", value: "-l"}, {label: "Tokens", value: "-ts"}];
+  const options = [{label: "Code Results", value: ""}, {label: "Build Process", value: "build"}, {label: "AST", value: "-a"}, {label: "SAST", value: "-s"}, {label: "LLVM IR", value: "-l"}, {label: "Tokens", value: "-ts"}];
   const [selectedOption, setSelectedOption] = useState(options[0].value);
   
   const run = async () => {
 
-    const res = await axios.post("http://localhost:5001/run", {content: code, language: "viz", args: selectedOption});
+    const res = await axios.post("http://ec2-54-89-155-121.compute-1.amazonaws.com:5001/run", {content: code, language: "viz", args: selectedOption});
     // const res = await axios.post("/run", {content: code, language: "viz", args: selectedOption});
     setResult(res.data);
   }
 
   return (
     <div className="page">
+      <div style={{ display: 'flex', gap: '10px' }}>
+        <a href="https://github.com/4115-viz/viz" target="_blank">Viz Compiler Source Code</a><br/><br/>
+        <a href="https://github.com/4115-viz/viz/tree/master/writeups/LRM" target="_blank">Viz Compiler Reference Manual</a>
+      </div>
       <h3 className="title">Viz Online</h3>
       <div style={{ display: 'flex', height: '30px', justifyContent: 'center', alignItems: 'center', gap: '10px'}}>
         <h4>Result Format:</h4>
@@ -29,6 +33,7 @@ const App = () => {
               return <option key={o.value} value={o.value}>{o.label}</option>
             })}
         </select>
+        <button className="run-btn" onClick={run}>Run</button>
       </div>
         <div className="container">
           <textarea className="textArea"
@@ -58,7 +63,6 @@ const App = () => {
             disabled={true}
           />
         </div>
-        <button className="run-btn" onClick={run}>Run</button>
     </div>
   );
 }
