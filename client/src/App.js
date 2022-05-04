@@ -14,7 +14,7 @@ const App = () => {
     if (code != "") {
       const res = await axios.post("http://ec2-54-89-155-121.compute-1.amazonaws.com:5001/run", {content: code, language: "viz", args: selectedOption});
       // const res = await axios.post("/run", {content: code, language: "viz", args: selectedOption});
-      const result = res == "" ? "Error" : res.data;
+      const result = res.data == "" ? "Error" : res.data;
       setResult(result);
     }
   }
