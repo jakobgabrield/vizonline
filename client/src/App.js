@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useRef} from 'react';
+import React, {useState, useRef} from 'react';
 import './App.css';
 import axios from 'axios';
 
@@ -11,12 +11,12 @@ const App = () => {
   const [selectedOption, setSelectedOption] = useState(options[0].value);
   
   const run = async () => {
-    if (code != "") {
+    if (code !== "") {
       const res = await axios.post("http://ec2-54-89-155-121.compute-1.amazonaws.com:5001/run", {content: code, language: "viz", args: selectedOption});
-      // const res = await axios.post("/run", {content: code, language: "viz", args: selectedOption});
+      // const res = await axios.post("http://localhost:5001/run", {content: code, language: "viz", args: selectedOption});
       let result = "";
       if (typeof res.data === 'object') {
-        result = JSON.stringify(res.data.error.error.stderr);
+        result = JSON.parse(JSON.stringify(res.data.error.stderr));
       } else {
         result = res.data;
       }
@@ -52,7 +52,7 @@ const App = () => {
               setCode(e.target.value);
             }}
             onKeyDown={(e) => {
-              if (e.key == 'Tab') {
+              if (e.key === 'Tab') {
                 e.preventDefault();
                 const { selectionStart, selectionEnd } = e.target;
                 const newText = code.substring(0, selectionStart) + '    ' + code.substring(selectionEnd, code.length);
