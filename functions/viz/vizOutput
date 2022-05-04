@@ -23,25 +23,40 @@ Usage() {
 # Build the C static library of builtin functions.
 BuildCLib() {
   cd lib/builtins
-  make clean -s
-  make -s
+  make clean
+  make
   cp ${builtins_ar} ../../${build_dir}
   cd ../..
 }
 
 CompileAndRun() {
   basename=${fname%.viz*}
+  #echo
+  #echo "========== viz 0.0.0 =========="
+  #echo "File name:"
+  #echo "$fname"
+  #echo
+  #echo "---"
+  #echo "Translating Viz to LLVM code..."
   # viz source code -> llvm code
   $VIZ $fpath > ${build_dir}/${basename}.ll
   if [ $? -ne 0 ]; then
     echo "Failed while translating Viz to LLVM code"
     exit;
   fi
+  #echo "Done."
+  #echo 
+  #echo "---"
+  #echo "Building the builtin c static library"
   BuildCLib
   if [ $? -ne 0 ]; then
     echo "Failed while building the builtin c static library"
     exit;
   fi
+  #echo "Done."
+  #echo
+  #echo "---"
+  #echo "Compiling the LLVM code..."
   cd ${build_dir}
   $LLC -relocation-model=pic ${basename}.ll > ${basename}.s
   $CC -o ${basename}.exe ${basename}.s ${builtins_ar}
@@ -49,6 +64,11 @@ CompileAndRun() {
     echo "Failed Compiling the LLVM code..."
     exit;
   fi
+  #echo "Done. Generated executable \"${basename}.exe\"."
+  #echo
+  #echo "---"
+  #echo "Running the executable \"${basename}.exe\""
+  #echo
   ./${basename}.exe
 }
 
