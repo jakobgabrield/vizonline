@@ -23,8 +23,8 @@ Usage() {
 # Build the C static library of builtin functions.
 BuildCLib() {
   cd lib/builtins
-  make clean
-  make
+  make clean -s
+  make -s
   cp ${builtins_ar} ../../${build_dir}
   cd ../..
 }
