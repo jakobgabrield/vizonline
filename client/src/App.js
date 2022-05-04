@@ -11,10 +11,12 @@ const App = () => {
   const [selectedOption, setSelectedOption] = useState(options[0].value);
   
   const run = async () => {
-
-    const res = await axios.post("http://ec2-54-89-155-121.compute-1.amazonaws.com:5001/run", {content: code, language: "viz", args: selectedOption});
-    // const res = await axios.post("/run", {content: code, language: "viz", args: selectedOption});
-    setResult(res.data);
+    if (code != "") {
+      const res = await axios.post("http://ec2-54-89-155-121.compute-1.amazonaws.com:5001/run", {content: code, language: "viz", args: selectedOption});
+      // const res = await axios.post("/run", {content: code, language: "viz", args: selectedOption});
+      const result = res == "" ? "Error" : res.data;
+      setResult(result);
+    }
   }
 
   return (
