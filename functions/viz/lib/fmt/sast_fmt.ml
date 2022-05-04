@@ -19,15 +19,18 @@ and fmt_sx se =
       | SBoolLit(true) -> "BoolLit(true)"
       | SBoolLit(false) -> "BoolLit(false)"
       | SArrayLit(a) -> "ArrayLit[" ^ fmt_sarray a ^ "]"
-      | SId(x) -> "Id(" ^ x ^ ")"
-      | SAssign(v, e) -> v ^ " = " ^ fmt_sexpr e
+      | SAssign(spe, se) -> String.concat "" ["Assign("; fmt_sx(SPostfixExpr spe); " = "; fmt_sexpr se; ")"]
       | SFuncCall(name, args) -> fmt_sfcall name args
       | SBinop(l, bo, r) -> 
         fmt_sexpr l ^ " " ^ fmt_op bo ^ " " ^ fmt_sexpr r 
       | SUnop(uo, r) ->
           string_of_uop uo ^ " " ^ fmt_sexpr r
-      | SSubscript(e, i) -> (fmt_sexpr e) ^ "[" ^ (fmt_sexpr i) ^ "]"
-      (*| STypeCast(st, se) -> "(Casting " ^ fmt_sexpr se ^ "->" ^ fmt_typ st ^ "\n"*)
+      | STypeCast(st, se) -> "(Casting " ^ fmt_sexpr se ^ "->" ^ fmt_typ st ^ "\n"
+      | SPostfixExpr (_, x) -> (match x with
+        | SId id -> "Id(" ^ id ^ ")"
+        | SSubscript(spe, sexpr) -> (fmt_sx (SPostfixExpr spe)) ^ "[" ^ (fmt_sexpr sexpr) ^ "]"
+        | SMemberAccess (spe, member) -> (fmt_sx (SPostfixExpr spe)) ^ "." ^ member
+      )
     )
 
 and fmt_sarray (sa : sexpr list) : string =
@@ -74,9 +77,14 @@ let fmt_sfdecl (fdecl:sfunc_def) =
   fmt_typ fdecl.srtyp ^ " " ^
   fdecl.sfname ^ "(" ^ String.concat ", " (List.map snd fdecl.sformals) ^
   ")\n{\n" ^
-  String.concat "" (List.map fmt_vdecl fdecl.slocals) ^
   String.concat "" (List.map fmt_sstmt fdecl.sbody) ^
   "}\n"
 
-let fmt_sprogram (funcs) =
+let fmt_ssdecl struct_decl = 
+  "STRUCT DECLARATION( " ^ struct_decl.sname ^ " )\n{\n" ^
+  String.concat "" (List.map fmt_vdecl struct_decl.smembers) ^
+  "}\n"
+
+let fmt_sprogram (structs, funcs) =
+  String.concat "\n" (List.map fmt_ssdecl structs) ^ "\n" ^
   String.concat "\n" (List.map fmt_sfdecl funcs)

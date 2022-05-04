@@ -35,6 +35,7 @@ let rec fmt_typ = function
       ">[" ;
       len ;
       "]"]
+  | StructType(id:string) -> "Type(Struct(\"" ^ id ^ "\"))"
 
 let string_of_uop = function
 | Not -> "not"
@@ -50,23 +51,29 @@ let rec fmt_expr = function
   | BoolLit(true) -> "BoolLit(true)"
   | BoolLit(false) -> "BoolLit(false)"
   | ArrayLit(a) -> "ArrayLit[" ^ fmt_array a ^ "]"
-  | Assign(v, e) -> "Assign: " ^ v ^ " = " ^ fmt_expr e
-  | Id(x) -> "Id(" ^ x ^ ")"
-  | FuncCall(name, args) ->
-    (*name ^ "(" ^ String.concat ", " (List.map fmt_expr args) ^ ")"*)
-    fmt_fcall name args
+  | Assign(v, e) -> String.concat "" [
+    "Assign("; 
+    fmt_expr(PostfixExpr v);
+    " = ";
+    fmt_expr e;
+    ")\n"]
+  | FuncCall(name, args) -> fmt_fcall name args
   | Binop(l, bo, r) ->
     fmt_expr l ^ " " ^ fmt_op bo ^ " " ^ fmt_expr r
   | Unop(uo, r) ->
     string_of_uop uo ^ " " ^ fmt_expr r
-  | Subscript(e, i) -> (fmt_expr e) ^ "[" ^ (fmt_expr i) ^ "]"
-  (*| TypeCast(t, e) -> "Casting " ^ fmt_expr e ^ "->" ^ fmt_typ t ^ "\n"*)
+  | TypeCast(t, e) -> "Casting " ^ fmt_expr e ^ "->" ^ fmt_typ t ^ "\n"
+  | PostfixExpr x -> (match x with
+    | Id id -> "Id(" ^ id ^ ")"
+    | Subscript(e, i) -> (fmt_expr (PostfixExpr e)) ^ "[" ^ (fmt_expr i) ^ "]"
+    | MemberAccess (e,member) -> (fmt_expr (PostfixExpr e)) ^ "." ^ member
+  )
   
 and fmt_fcall name args = 
   "FuncCall(" ^
      "name: " ^ fmt_string name ^
      ", args: " ^ fmt_expr_list args ^
-  ")"
+  ")\n"
   
 and fmt_expr_list l = String.concat "\n" (List.map fmt_expr l)
 
@@ -80,7 +87,7 @@ and fmt_var_decl ((t, s), e) = fmt_typ t ^ " " ^ s ^ " = " ^
 ^ ";\n"
 
 and fmt_stmt = function
-  | Expr e -> "  " ^ fmt_expr e
+  | Expr e -> fmt_expr e
   | Block (stmts) ->
     "{\n" ^ String.concat "" (List.map fmt_stmt stmts) ^ "}\n"
   | ID_Block (stmts) ->
@@ -111,12 +118,19 @@ let fmt_vdecl (t, n) =
     | Some(e) -> ", value: " ^ fmt_expr e *)
 
 let fmt_fdecl fdecl =
+  "Function Declartion: " ^
   fmt_typ fdecl.rtyp ^ " " ^
-  fdecl.fname ^ "(" ^ String.concat ", " (List.map snd fdecl.formals) ^
-  ")\n{\n" ^
-  String.concat "" (List.map fmt_vdecl fdecl.locals) ^
-  String.concat "" (List.map fmt_stmt fdecl.body) ^
+  fdecl.fname ^
+  "(" ^ String.concat ", " (List.map snd fdecl.formals) ^
+  ")" ^ "\n{\n" ^ "  " ^
+  String.concat "  " (List.map fmt_stmt fdecl.body) ^
   "}\n"
 
-let fmt_program (funcs) =
+let fmt_sdecl struct_decl = 
+  "Struct Declaration(\"" ^ struct_decl.name ^ "\")\n{\n" ^
+    "  " ^ String.concat "  " (List.map fmt_vdecl struct_decl.members) ^
+  "}\n"
+
+let fmt_program (structs, funcs) =
+  String.concat "" (List.map fmt_sdecl structs) ^ "\n" ^
   String.concat "\n" (List.map fmt_fdecl funcs)

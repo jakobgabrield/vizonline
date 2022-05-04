@@ -9,7 +9,9 @@
 *)
 let digit  = ['0'-'9']
 let non_zero_digits = ['1'-'9']
-let letter = ['a'-'z' 'A'-'Z']
+let uppercase = ['A'-'Z']
+let lowercase = ['a'-'z']
+let letter    = ['a'-'z' 'A'-'Z']
 let whitespace = [' ' '\t' '\r' '\n']
 
 rule token = parse
@@ -42,6 +44,7 @@ rule token = parse
 | "step" {STEP}
 | "as" {AS}
 | "..." {RANGE} (* used in the for loop construct *)
+| "struct" {STRUCT}
 
 (* -------- types -------- *)
 | "none" { T_NONE }
@@ -100,7 +103,8 @@ rule token = parse
 | "->" { ARROW    }
 
 (* --------- IDs ------------ *)
-| letter (digit | letter | '_')* as lxm { ID_FUNC(lxm) } (* function names dont need @ *)
+| uppercase lowercase* as lxm { CAP_ID(lxm) } (* capitalized UNCAP_ID, example: Shape, Person, Edge *)
+| lowercase (digit | letter | '_')* as lxm { UNCAP_ID(lxm) } (* uncapitalized UNCAP_ID, example: shape, person *)
 | "@" letter (digit | letter | '_')* as lxm { ID_VAR(String.sub lxm 1 ((String.length lxm) - 1)) } (* variable access and decl need @ *)
 
 (* -------- Other ----------- *)

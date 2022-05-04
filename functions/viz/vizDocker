@@ -9,7 +9,6 @@ set -e
 
 DOCKER_TAG=viz
 DOCKER_WORK_DIR=/home/viz
-#DOCKER_WORK_DIR=/home/app/functions/viz
 
 Usage() {
   echo

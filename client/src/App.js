@@ -7,7 +7,7 @@ const App = () => {
   const codeAreaRef = useRef();
   const [code, setCode] = useState("");
   const [result, setResult] = useState("");
-  const options = [{label: "AST", value: "-a"}, {label: "SAST", value: "-s"}, {label: "LLVM IR", value: "-l"}, {label: "Tokens", value: "-ts"}];
+  const options = [{label: "Code Results", value: ""}, {label: "AST", value: "-a"}, {label: "SAST", value: "-s"}, {label: "LLVM IR", value: "-l"}, {label: "Tokens", value: "-ts"}];
   const [selectedOption, setSelectedOption] = useState(options[0].value);
   
   const run = async () => {

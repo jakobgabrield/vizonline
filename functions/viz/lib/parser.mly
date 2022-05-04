@@ -13,7 +13,7 @@ open Ast
 
 /* keywords */
 %token FUNC IF ELSE ELIF FOR WHILE INFINITE_LOOP RETURN BREAK
-%token CONTINUE TRY CATCH RAISE LINK USE IN STEP AS RANGE
+%token CONTINUE TRY CATCH RAISE LINK USE IN STEP AS RANGE STRUCT 
 
 /* type */
 %token T_NONE T_STR T_INT T_BOOL T_FLOAT T_ARRAY
@@ -24,8 +24,10 @@ open Ast
 
 /* split id into two, nothing changes outside of parser file */
 
-%token <string> ID_FUNC /* function names */
+%token <string> UNCAP_ID /* function names */
 %token <string> ID_VAR /* variable access or assign */
+%token <string> CAP_ID /* struct names */
+%token <string> UNCAP_ID /* struct member */
 %token <string> LIT_STR
 %token <int> LIT_INT
 %token <float> LIT_FLOAT
@@ -55,40 +57,59 @@ open Ast
 
 
 program:
-  /* nothing */ { [] }
-  | fdecls EOF { $1 }
+  /* nothing */ { ([], []) }
+  | sdecls fdecls EOF { ($1, $2) }
 
 fdecls:
-   /* nothing */ { []               }
+   /* nothing */ { [] }
  | fdecl fdecls { $1 :: $2 }
- 
+
+// structs declarations
+sdecls:
+   /* nothing */ { [] }
+ | sdecl sdecls  { $1 :: $2 }
+
 /* @x: string; */
 vdecl:
-  | ID_VAR COLON builtin_type {($3, $1)}
+  | ID_VAR COLON typ {($3, $1)}
 
-
-builtin_type:
+typ:
   | T_NONE { NoneType }
   | T_STR { StrType }
   | T_INT { IntType }
   | T_BOOL { BoolType }
   | T_FLOAT { FloatType }
-  | T_ARRAY BAR builtin_type BAR { ArrayType(Some($3), None) }
-
+  | T_ARRAY BAR typ BAR { ArrayType(Some($3), None) }
+  | CAP_ID { StructType($1) }
 
 /* function declaration */
 fdecl:
   /* func with args */ 
-  | FUNC ID_FUNC LPAREN formals_opt RPAREN COLON builtin_type LBRACE stmt_list RBRACE
+  | FUNC UNCAP_ID LPAREN formals_opt RPAREN COLON typ LBRACE stmt_list RBRACE
   {
     { 
       rtyp = $7;
       fname = $2;
       formals = $4;
-      locals = [];
       body = $9;
     }
   }
+
+/* struct declaration */
+sdecl:
+  /* struct definition, more like a C struct currently */ 
+  /* I guess we need locals if we want class functions */
+  | STRUCT CAP_ID LBRACE members_list RBRACE
+  { 
+    { 
+      name = $2;
+      members = $4; 
+    }
+  }
+
+members_list:
+  vdecl SEMI { [$1] }
+  | vdecl SEMI members_list { $1::$3 }
 
 /* formals_opt */
 formals_opt:
@@ -102,7 +123,6 @@ formals_list:
 stmt_list:
   /* nothing */ { [] }
   | stmt stmt_list  { $1::$2 }
-
 
 stmt:
   | expr SEMI { Expr $1 }
@@ -119,21 +139,11 @@ stmt:
       let create_var_decl = (fun var_name -> ((vdecl_ty, var_name), vdecl_exp)) in
       let list_of_decls = List.fold_left (fun lst var_name -> (create_var_decl var_name) :: lst ) [] var_list 
       in VarDeclList(list_of_decls)
-    }  
-
-/*
-  initializer lists
-  want to do something like
-  @x, @y, @z -> (int, 10);
-  all variables are of type int, and have value 10
-  
-  or
-  @x, @y, @z -> (int);
-*/
+    }
 
 vdecl_list_init_opt:
-  | ARROW LPAREN builtin_type RPAREN            { ($3 , None   )   }
-  | ARROW LPAREN builtin_type COMMA expr RPAREN { ($3 , Some($5) ) }
+  | ARROW LPAREN typ RPAREN            { ($3 , None   )   }
+  | ARROW LPAREN typ COMMA expr RPAREN { ($3 , Some($5) ) }
 
 vdecl_list:
   | ID_VAR { [$1] }
@@ -156,9 +166,9 @@ loop:
   /* for counter in starting_num ... <ending condition>ending_num step step_number */
   | FOR ID_VAR IN LIT_INT RANGE end_condition LIT_INT increment stmt
             {
-                let var_init   = Assign($2, IntLit($4)) in (* ex: i = 0 *)
-                let predicate  = Binop(Id($2), $6, IntLit($7)) in (* ex: i < 5 *)
-                let update     = Assign( $2, Binop(Id($2), Add, $8) ) in (* ex: i = i + 1 *)
+                let var_init   = Assign(Id($2), IntLit($4)) in (* ex: i = 0 *)
+                let predicate  = Binop(PostfixExpr(Id($2)), $6, IntLit($7)) in (* ex: i < 5 *)
+                let update     = Assign(Id($2), Binop(PostfixExpr(Id($2)), Add, $8) ) in (* ex1: i=i+1, ex2: i=i+(-1) *)
                 let block_code = $9 in
                 For(var_init, predicate, update, block_code)
             }
@@ -168,11 +178,12 @@ end_condition:
   | GT   { Great  }
   | GTEQ { Geq    }
   | LTEQ { Leq    }
-  | EQ   { Eq     }
+  /*| EQ   { Eq     }*/ /* this makes no sense, we should get rid of */
 
 increment:
   /* dont define increment, default to 1 */ { IntLit(1) } 
-  | STEP LIT_INT { IntLit($2)}
+  | STEP LIT_INT { IntLit($2)} /* supports a positive step */
+  | STEP MINUS LIT_INT { IntLit($3 * -1) } /* supports a negative step */
 
 block: 
   | LBRACE stmt_list RBRACE                 { Block $2 }
@@ -191,15 +202,13 @@ else_stmt:
   | ELSE stmt { $2 }
 
 expr:
+  | postfix_expr { PostfixExpr($1) }
   /* literal */
   | string_literal { StrLit($1) }
   | LIT_INT   { IntLit($1)   }
   | LIT_BOOL  { BoolLit($1)  }
   | LIT_FLOAT { FloatLit($1) }
   | LBRACKET exprs_opt RBRACKET { ArrayLit($2) }
-
-  /* variable access */
-  | ID_VAR { Id($1) }
 
   /* arithmetic */
   | expr PLUS   expr { Binop($1, Add,   $3)   }
@@ -223,24 +232,21 @@ expr:
   | NOT expr { Unop(Not, $2) }
 
   /* assignment */
-  | ID_VAR ASSIGN expr { Assign($1, $3) }
-  | ID_VAR PLUSEQ expr { Assign($1, Binop(Id($1), Add, $3))}
-  | ID_VAR MINUSEQ expr { Assign($1, Binop(Id($1), Sub, $3))} 
-  | ID_VAR TIMESEQ expr { Assign($1, Binop(Id($1), Mult, $3))}
-  | ID_VAR DIVEQ expr { Assign($1, Binop(Id($1), Div, $3))}
-  | ID_VAR MODEQ expr { Assign($1, Binop(Id($1), Mod, $3))}
+  | postfix_expr ASSIGN expr { Assign($1, $3) } /* struct member */
+  | ID_VAR PLUSEQ expr { Assign(Id($1), Binop(PostfixExpr(Id($1)), Add, $3))}
+  | ID_VAR MINUSEQ expr { Assign(Id($1), Binop(PostfixExpr(Id($1)), Sub, $3))} 
+  | ID_VAR TIMESEQ expr { Assign(Id($1), Binop(PostfixExpr(Id($1)), Mult, $3))}
+  | ID_VAR DIVEQ expr { Assign(Id($1), Binop(PostfixExpr(Id($1)), Div, $3))}
+  | ID_VAR MODEQ expr { Assign(Id($1), Binop(PostfixExpr(Id($1)), Mod, $3))}
   
   /* remove clarifying parens */
   | LPAREN expr RPAREN { $2 } /* (expr) -> expr. get rid of parens */
 
   /* function call */
-  | ID_FUNC LPAREN exprs_opt RPAREN { FuncCall($1, $3) }
-
-  /* Array subscript [] */
-  | expr LBRACKET expr RBRACKET { Subscript($1, $3) }
+  | UNCAP_ID LPAREN exprs_opt RPAREN { FuncCall($1, $3) }
 
   /* just need to ensure that this is right associative */
-  /*| BAR AS typ BAR expr {TypeCast($3, $5)}  */
+  | BAR AS typ BAR expr {TypeCast($3, $5)}
 
 /* allowing for multi-line strings */
 string_literal:
@@ -257,3 +263,10 @@ exprs_opt:
 exprs:
   expr  { [$1] }
   | expr COMMA exprs { $1::$3 }
+
+postfix_expr:
+  /* variable access */
+  | ID_VAR { Id($1) }
+  | postfix_expr DOT UNCAP_ID { MemberAccess($1, $3) }
+    /* Array subscript [] */
+  | postfix_expr LBRACKET expr RBRACKET { Subscript($1, $3) }

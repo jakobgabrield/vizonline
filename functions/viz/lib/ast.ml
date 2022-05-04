@@ -4,15 +4,16 @@ type bop = Add | Sub | Eq | Neq | Less | And | Or
 
 type uop = Not | Neg
 
-type builtin_type = 
+type typ = 
   | NoneType
   | StrType
   | IntType
   | BoolType
   | FloatType
-  | ArrayType of (builtin_type option) * (int option)
+  | ArrayType of (typ option) * (int option)
+  | StructType of string
 
-type bind = builtin_type * string
+type bind = typ * string
 
 type expr =
   | StrLit of string
@@ -21,13 +22,17 @@ type expr =
   | BoolLit of bool
   | NoneLit
   | ArrayLit of expr list
-  | Id of string
-  | Assign of string * expr
+  | Assign of postfix_expr * expr
   | FuncCall of string * expr list
   | Binop of expr * bop * expr
   | Unop of uop * expr
-  | Subscript of expr * expr
-  (* | TypeCast of builtin_type * expr *)
+  | TypeCast of typ * expr
+  | PostfixExpr of postfix_expr
+
+and postfix_expr =
+  | Id of string
+  | MemberAccess of postfix_expr * string
+  | Subscript of postfix_expr * expr
 
 type var_decl = bind * expr option
 
@@ -43,12 +48,16 @@ type stmt =
   | VarDeclList of var_decl list
   
 type func_def = {
-  rtyp: builtin_type;
+  rtyp: typ;
   fname: string;
   formals: bind list;
-  locals: bind list;
   body: stmt list;
 }
 
+type struct_def = {
+  name: string;
+  members: bind list; 
+}
+
 (* ----- Entry ----- *)
-type program = func_def list
+type program = struct_def list * func_def list

@@ -19,7 +19,7 @@ open Sast
 module StringMap = Map.Make(String)
 
 (* translate : Sast.program -> Llvm.module *)
-let translate (functions) =
+let translate (_, functions) =
   let context    = L.global_context () in
 
   (* Create the LLVM compilation module into which
@@ -28,11 +28,10 @@ let translate (functions) =
 
   (* Get types from the context *)
   let i32_t      = L.i32_type    context
-  (* and i8_t       = L.i8_type     context *)
   and i1_t       = L.i1_type     context
   and void_t     = L.void_type    context
   and float_t    = L.double_type context 
-  and str_t      = L.pointer_type   (L.i8_type context)
+  and str_t      = L.pointer_type (L.i8_type context)
   in
   (* Return the LLVM type for a Viz type *)
   let rec ltype_of_typ = function
@@ -41,15 +40,105 @@ let translate (functions) =
     | A.NoneType -> void_t
     | A.StrType -> str_t
     | A.FloatType -> float_t
-    | A.ArrayType(t, _) -> match t with
+    | A.ArrayType(t, _) -> (match t with
       | Some(t) -> L.pointer_type (ltype_of_typ t)
-      | None -> failwith "Runtime error: unable to deduce the array's type"
+      | None -> failwith "Runtime error: unable to deduce the array's type")
+    | A.StructType(name) -> 
+      let struct_t = L.named_struct_type context name in
+      L.struct_set_body struct_t (Array.of_list []) false;
+      struct_t
   in
+
+  (* for casting error messages *)
+  let string_of_type = function
+    A.IntType   -> "IntType"
+    | A.BoolType  -> "BoolType"
+    | A.NoneType -> "NoneType"
+    | A.StrType -> "StrType"
+    | A.FloatType -> "FloatType"
+    | A.ArrayType(_,_) -> "ArrayType"
+    | A.StructType(_) -> "StructType"
+  in
+
+  (* viz Builtins *)
 
   (* Declaring print function *)
   let print_t = L.var_arg_function_type i32_t [| str_t |] in
   let print_func = L.declare_function "printf" print_t the_module in
 
+  (* cast int to double C lib function *)
+  let int_to_double_t = L.var_arg_function_type float_t [| i32_t |] in
+  let int_to_double_func = L.declare_function "int_to_double" int_to_double_t the_module in
+
+  (* cast string to double C lib function *)
+  let str_to_double_t = L.var_arg_function_type float_t [| str_t |] in
+  let str_to_double_func = L.declare_function "str_to_double" str_to_double_t the_module in
+
+  (* cast double to int using C lib function *)
+  let double_to_int_t = L.var_arg_function_type i32_t [| float_t |] in
+  let double_to_int_func = L.declare_function "double_to_int" double_to_int_t the_module in
+
+  (* cast bool to int using C lib function *)
+  let bool_to_int_t = L.var_arg_function_type i32_t [| i1_t |] in
+  let bool_to_int_func = L.declare_function "bool_to_int" bool_to_int_t the_module in
+
+  (* cast str to int using C lib function *)
+  let str_to_int_t = L.var_arg_function_type i32_t [| str_t |] in
+  let str_to_int_func = L.declare_function "str_to_int" str_to_int_t the_module in
+
+  (* cast bool to string C lib function *)
+  let bool_to_str_t = L.var_arg_function_type str_t [| i1_t |] in
+  let bool_to_str_func = L.declare_function "bool_to_str" bool_to_str_t the_module in
+
+  (* cast int to string C lib function *)
+  let int_to_str_t = L.var_arg_function_type str_t [| i32_t |] in
+  let int_to_str_func = L.declare_function "int_to_str" int_to_str_t the_module in
+
+  (* cast bool to string C lib function *)
+  let double_to_str_t = L.var_arg_function_type str_t [| float_t |] in
+  let double_to_str_func = L.declare_function "double_to_str" double_to_str_t the_module in
+
+  (* string concat library function *)
+  let string_concat_t = L.var_arg_function_type str_t [| str_t ; str_t |] in
+  let string_concat_func = L.declare_function "string_concat" string_concat_t the_module in
+
+  (* string concat library function *)
+  let str_len_func_t = L.var_arg_function_type i32_t [| str_t |] in
+  let str_len_func = L.declare_function "str_len" str_len_func_t the_module in
+
+  (* to_upper string library function *)
+  let to_upper_func_t = L.var_arg_function_type str_t [| str_t |] in
+  let to_upper_func = L.declare_function "to_upper" to_upper_func_t the_module in
+
+  (* to_upper string library function *)
+  let to_lower_func_t = L.var_arg_function_type str_t [| str_t |] in
+  let to_lower_func = L.declare_function "to_lower" to_lower_func_t the_module in
+
+  (* string comparison functions *)
+  (* string_equals *)
+  let string_equals_func_t = L.var_arg_function_type i32_t [| str_t ; str_t |] in
+  let string_equals_func = L.declare_function "string_equals" string_equals_func_t the_module in
+  
+  (* strin not equal *)
+  let string_not_equals_func_t = L.var_arg_function_type i32_t [| str_t ; str_t|] in
+  let string_not_equals_func = L.declare_function "string_not_equals" string_not_equals_func_t the_module in
+
+  (* string lt *)
+  let string_lt_func_t = L.var_arg_function_type i32_t [| str_t ; str_t |] in
+  let string_lt_func = L.declare_function "string_lt" string_lt_func_t the_module in
+
+  (* string gt *)
+  let string_gt_func_t = L.var_arg_function_type i32_t [| str_t ; str_t |] in
+  let string_gt_func = L.declare_function "string_gt" string_gt_func_t the_module in
+
+  (* string lte *)
+  let string_lte_func_t = L.var_arg_function_type i32_t [| str_t ; str_t |] in
+  let string_lte_func = L.declare_function "string_lte" string_lte_func_t the_module in
+
+  (* string gte *)
+  let string_gte_func_t = L.var_arg_function_type i32_t [| str_t ; str_t |] in
+  let string_gte_func = L.declare_function "string_gte" string_gte_func_t the_module in
+  
   (* Format strings for printing *) 
   let int_format_str builder = L.build_global_stringptr "%d\n" "fmt" builder 
   and str_format_str builder = L.build_global_stringptr "%s\n" "fmt" builder
@@ -81,17 +170,9 @@ let translate (functions) =
         let local = L.build_alloca (ltype_of_typ t) n builder in
         ignore (L.build_store p local builder);
         StringMap.add n local m
-
-      (* Allocate space for any locally declared variables and add the
-       * resulting registers to our map *)
-      and add_local m (t, n) =
-        let local_var = L.build_alloca (ltype_of_typ t) n builder
-        in StringMap.add n local_var m
       in
-
-      let formals = List.fold_left2 add_formal StringMap.empty fdecl.sformals
-          (Array.to_list (L.params the_function)) in
-      List.fold_left add_local formals fdecl.slocals
+      List.fold_left2 add_formal StringMap.empty fdecl.sformals
+          (Array.to_list (L.params the_function))
     in
 
     (* Return the value for a variable or formal argument.
@@ -126,9 +207,23 @@ let translate (functions) =
                 let _ = (L.build_store elem cptr builder) 
                 in i+1)
                 0 all_elem); ptr)
-      | SId s       -> L.build_load (lookup local_vars s) s builder
-      | SAssign (s, e) -> let e' = (build_expr local_vars) builder e in
-        ignore(L.build_store e' (lookup local_vars s) builder); e'
+      | SAssign (l_spe, r_e) -> 
+        let r_val = (build_expr local_vars) builder r_e in
+        (match l_spe with
+        (* If left is a variable, simply store the r_val into the address of that variable *)
+        | (_, SId id) -> 
+          ignore(L.build_store r_val (lookup local_vars id) builder); r_val
+        | (_, SMemberAccess((_, spx), member_id)) ->
+            (match spx with
+            (* The expression before dot is a @variable *)
+            | SId id -> 
+              let struct_addr = lookup local_vars id in
+              let member_addr = struct_addr in
+              ignore(L.build_store r_val member_addr builder); r_val
+            (* The expression before is another postfix expression: recursively evaluate its value *)
+            | _ -> ignore(L.build_store r_val (lookup local_vars member_id) builder); r_val)
+        | _ -> failwith "TODO: irgen SAssign"
+        )
       | SBinop ((op_ret_type, _ ) as e1, op, e2) ->
         (
         let e1' = (build_expr local_vars) builder e1
@@ -167,7 +262,7 @@ let translate (functions) =
                   | A.Great   -> L.build_fcmp L.Fcmp.Ogt
                   | A.Leq     -> L.build_fcmp L.Fcmp.Ole
                   | A.Geq     -> L.build_fcmp L.Fcmp.Oge
-                  | _ -> raise ((Failure "TODO: Unimplemented Binary Op for Floats"))
+                  | _ -> failwith "TODO: Unimplemented Binary Op for Floats"
                   ) e1' e2' "tmp" builder
           | A.BoolType ->
             (match op with
@@ -175,11 +270,36 @@ let translate (functions) =
             | A.Neq     -> L.build_icmp L.Icmp.Ne
             | A.And     -> L.build_and
             | A.Or      -> L.build_or
-            | _ -> raise ((Failure "Unimplemented Binary Op for Bools"))
+            | _ -> failwith "Unimplemented Binary Op for Bools"
             ) e1' e2' "tmp" builder
-          | A.StrType -> raise ((Failure "TODO: Unimplemented Binary Op for StrType"))
-          | A.NoneType -> raise ((Failure "TODO: Unimplemented Binary Op for NoneType"))
-          | A.ArrayType _ -> raise ((Failure "TODO: Unimplemented Binary Op for ArrayType"))
+          | A.StrType -> 
+            ( match op with
+            | A.Add -> 
+              L.build_call string_concat_func [| e1' ; e2'|]
+              "string_concat" builder
+            | A.Eq -> 
+              L.build_call string_equals_func [| e1' ; e2'|]
+              "string_equals" builder
+            | A.Neq -> 
+              L.build_call string_not_equals_func [| e1' ; e2'|]
+              "string_not_equals" builder
+            | A.Leq -> 
+              L.build_call string_lte_func [| e1' ; e2'|]
+              "string_lte" builder
+            | A.Geq ->
+              L.build_call string_gte_func [| e1' ; e2'|]
+              "string_gte" builder
+            | A.Less -> 
+              L.build_call string_lt_func [| e1' ; e2'|]
+              "string_lt" builder
+            | A.Great ->
+              L.build_call string_gt_func [| e1' ; e2'|]
+              "string_gt" builder
+            | _ -> raise ((Failure "Unimplemented Binary Op for StrType"))
+            )
+          | A.NoneType -> failwith "TODO: Unimplemented Binary Op for NoneType"
+          | A.ArrayType _ -> failwith "TODO: Unimplemented Binary Op for ArrayType"
+          | A.StructType _ -> failwith "does not support binary operation for struct"
         )
       | SUnop (op, ((ret_ty, _ ) as e)) ->
         (
@@ -188,21 +308,22 @@ let translate (functions) =
             | A.BoolType  -> 
               (match op with 
               | A.Not -> L.build_not e' "tmp" builder
-              | _ -> raise ((Failure "Unimplemented Unary Op for BoolType"))
+              | _ -> failwith "Unimplemented Unary Op for BoolType"
               )
             | A.IntType   ->
               (match op with 
               | A.Neg -> L.build_neg e' "tmp" builder
-              | _ -> raise ((Failure "Unimplemented Unary Op for IntType"))
+              | _ -> failwith "Unimplemented Unary Op for IntType"
               )
             | A.FloatType ->
               (match op with 
               | A.Neg -> L.build_fneg e' "tmp" builder
-              | _ -> raise ((Failure "Unimplemented Unary Op for FloatType"))
+              | _ -> failwith "Unimplemented Unary Op for FloatType"
               )
-            | A.StrType   -> raise ((Failure "Unimplemented Unary Op for StrType"))
-            | A.NoneType  -> raise ((Failure "Unimplemented Unary Op for NoneType"))
-            | A.ArrayType _  -> raise ((Failure "Unimplemented Unary Op for NoneType"))
+            | A.StrType   -> failwith "Unimplemented Unary Op for StrType"
+            | A.NoneType  -> failwith "Unimplemented Unary Op for NoneType"
+            | A.ArrayType _  -> failwith "Unimplemented Unary Op for NoneType"
+            | A.StructType _ -> failwith "Does not import unary operation for StructType"
         )
       | SFuncCall("println", [])   -> 
         L.build_call print_func [| str_format_str builder; ((build_expr local_vars) builder (A.StrType, SStrLit("")))|]
@@ -219,6 +340,15 @@ let translate (functions) =
       | SFuncCall("print_bool", [e])  -> 
           L.build_call print_func [| int_format_str builder; ((build_expr local_vars) builder e)|]
           "printf" builder
+      | SFuncCall("str_len", [e])  -> 
+            L.build_call str_len_func [| ((build_expr local_vars) builder e)|]
+            "str_len" builder
+      | SFuncCall("to_upper", [e])  -> 
+            L.build_call to_upper_func [| ((build_expr local_vars) builder e)|]
+            "to_upper" builder
+      | SFuncCall("to_lower", [e])  -> 
+            L.build_call to_lower_func [| ((build_expr local_vars) builder e)|]
+            "to_lower" builder
       | SFuncCall (f, args) ->
         let (fdef, _) = StringMap.find f function_decls in
         let llargs = List.rev (List.map ((build_expr local_vars) builder) (List.rev args)) in
@@ -231,14 +361,82 @@ let translate (functions) =
                       | _ -> f ^ "_result") in
 
         L.build_call fdef (Array.of_list llargs) result builder
-      | SSubscript (arr_e, idx_e) -> 
-        let arr_v = build_expr local_vars builder arr_e in
-        let idx_v = build_expr local_vars builder idx_e in
-        L.build_load (L.build_gep arr_v [| idx_v |] "subscript" builder) "" builder
-      (*| STypeCast(_, e) -> (* TODO: Below is just a placeholder. *)
-        L.build_call print_func [| ((build_expr local_vars) builder e) |]
-        "print" builder *)
-    in
+      | STypeCast(typ, ((ty_exp, _) as e)) -> 
+          (
+            let type_cast_err e1 e2 = 
+                raise (Failure("Cast type not supported from " ^ 
+                              string_of_type e1 ^ " to " ^ 
+                              string_of_type e2)) 
+            in
+            (* typ is what we would like to cast the expr to *)
+            match typ with
+            | IntType -> 
+                  (match ty_exp with 
+                    | IntType   -> ((build_expr local_vars) builder e)
+                    | BoolType  ->
+                          (                    
+                            L.build_call bool_to_int_func [| ((build_expr local_vars) builder e)|]
+                            "bool_to_int" builder
+                          )
+                    | FloatType ->
+                          (                    
+                            L.build_call double_to_int_func [| ((build_expr local_vars) builder e)|]
+                            "double_to_int" builder
+                          )
+                    | StrType ->
+                          (                    
+                            L.build_call str_to_int_func [| ((build_expr local_vars) builder e)|]
+                            "str_to_int" builder
+                          )                          
+                    | _ -> type_cast_err ty_exp typ
+                  )
+            | FloatType -> 
+              (match ty_exp with 
+                | IntType   -> 
+                    (
+                    L.build_call int_to_double_func [| ((build_expr local_vars) builder e)|]
+                    "int_to_double" builder
+                    )
+                | FloatType -> ((build_expr local_vars) builder e)
+                | StrType ->
+                  (                    
+                    L.build_call str_to_double_func [| ((build_expr local_vars) builder e)|]
+                    "str_to_double" builder
+                  )   
+                | _ -> type_cast_err ty_exp typ
+              )
+
+            | StrType ->
+              (
+                match fst(e) with
+                | IntType ->
+                  (                    
+                    L.build_call int_to_str_func [| ((build_expr local_vars) builder e)|]
+                    "int_to_str" builder
+                  )   
+                | BoolType -> 
+                  (                    
+                    L.build_call bool_to_str_func [| ((build_expr local_vars) builder e)|]
+                    "bool_to_str" builder
+                  )   
+                | FloatType ->
+                  (                    
+                    L.build_call double_to_str_func [| ((build_expr local_vars) builder e)|]
+                    "double_to_str" builder
+                  )   
+                | StrType -> ((build_expr local_vars) builder e)
+                | _ -> type_cast_err ty_exp typ
+              )
+            | _ -> type_cast_err ty_exp typ
+        )
+      | SPostfixExpr (typ, spx) -> ( match spx with
+        | SId id -> L.build_load (lookup local_vars id) id builder
+        | SSubscript (spe, idx_sexpr) -> 
+          let arr_v = build_expr local_vars builder (typ, SPostfixExpr spe) in
+          let idx_v = build_expr local_vars builder idx_sexpr in
+          L.build_load (L.build_gep arr_v [| idx_v |] "subscript" builder) "" builder
+        | _ -> failwith "TODO:")
+      in
 
     (* LLVM insists each basic block end with exactly one "terminator"
        instruction that transfers control.  This function runs "instr builder"

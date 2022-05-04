@@ -1,6 +1,6 @@
 open Ast
 
-type sexpr = builtin_type * sx
+type sexpr = typ * sx
 and sx =
   | SStrLit of string
   | SIntLit of int
@@ -8,12 +8,18 @@ and sx =
   | SBoolLit of bool
   | SNoneLit
   | SArrayLit of sexpr list
-  | SId of string
   | SBinop of sexpr * bop * sexpr
-  | SAssign of string * sexpr
+  | SAssign of spostfix_expr * sexpr
   | SFuncCall of string * sexpr list
   | SUnop of uop * sexpr
-  | SSubscript of sexpr * sexpr
+  | STypeCast of typ * sexpr
+  | SPostfixExpr of spostfix_expr
+
+and spostfix_expr = typ * spx
+and spx =
+  | SId of string
+  | SMemberAccess of spostfix_expr * string
+  | SSubscript of spostfix_expr * sexpr
 
 type svar_decl = bind * sexpr option
 
@@ -29,11 +35,15 @@ type sstmt =
   | SVarDeclList of svar_decl list
   
 type sfunc_def = {
-  srtyp: builtin_type;
+  srtyp: typ;
   sfname: string;
   sformals: bind list;
   sbody: sstmt list;
-  slocals: bind list;
 }
 
-type sprogram = bind list * sfunc_def list
+type sstruct_def = {
+  sname: string;
+  smembers: bind list; 
+}
+
+type sprogram = sstruct_def list * sfunc_def list
