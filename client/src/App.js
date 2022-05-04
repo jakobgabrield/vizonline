@@ -21,7 +21,7 @@ const App = () => {
     <div className="page">
       <div style={{ display: 'flex', gap: '10px' }}>
         <a href="https://github.com/4115-viz/viz" target="_blank">Viz Compiler Source Code</a><br/><br/>
-        <a href="https://github.com/4115-viz/viz/tree/master/writeups/LRM" target="_blank">Viz Compiler Reference Manual</a>
+        <a href="https://github.com/4115-viz/viz/blob/master/writeups/LRM/Viz_LRM.pdf" target="_blank">Viz Compiler Reference Manual</a>
       </div>
       <h3 className="title">Viz Online</h3>
       <div style={{ display: 'flex', height: '30px', justifyContent: 'center', alignItems: 'center', gap: '10px'}}>
