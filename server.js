@@ -31,14 +31,7 @@ app.post('/run', async (req, res) => {
             result = await executeProgram(filePath, args, true);
         }
         if (typeof result === 'object') {
-            // result = JSON.parse(JSON.stringify(res.data.error.stderr));
-            result = JSON.stringify(res.data.error.stderr);
-            if (result.includes("./vizOutput: 80: [[: not found")) {
-                result.replace("./vizOutput: 80: [[: not found", "");
-            } else if (result.includes("./viz: 80: [[: not found")) {
-                result.replace("./viz: 80: [[: not found", "");
-            }
-            result = JSON.parse(result);
+            result = JSON.parse(JSON.stringify(res.data.error.stderr));
         }
         // try {
         //     fs.unlinkSync(`${__dirname}/viz/online_programs/${filePath}`);
