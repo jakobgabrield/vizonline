@@ -26,7 +26,10 @@ app.post('/run', async (req, res) => {
     const { content, language, args } = req.body;
     const filePath = await generateFile(content, language);
     try {
-        const result = await executeProgram(filePath, args);
+        let result = await executeProgram(filePath, args);
+        if (typeof result === 'object') {
+            result = JSON.parse(JSON.stringify(res.data.error.stderr));
+        }
         // try {
         //     fs.unlinkSync(`${__dirname}/viz/online_programs/${filePath}`);
         // } catch(err) {
