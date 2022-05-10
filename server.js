@@ -26,7 +26,10 @@ app.post('/run', async (req, res) => {
     const { content, language, args } = req.body;
     const filePath = await generateFile(content, language);
     try {
-        let result = await executeProgram(filePath, args);
+        let result = await executeProgram(filePath, args, false);
+        if (result === "") {
+            result = await executeProgram(filePath, args, true);
+        }
         if (typeof result === 'object') {
             result = JSON.parse(JSON.stringify(res.data.error.stderr));
         }
