@@ -5,7 +5,7 @@ import axios from 'axios';
 const App = () => {
   
   const codeAreaRef = useRef();
-  const [code, setCode] = useState("/*\nWelcome to VizOnline, the official online editor of the Viz programming language\n*/");
+  const [code, setCode] = useState('/*\nWelcome to VizOnline, the official online editor of the Viz programming language\n*/\nfunc main(): none {\n    print("Welcome to the Viz programming language);\n}"';
   const [result, setResult] = useState("");
   const options = [{label: "Code Results", value: ""}, {label: "Build Process", value: "build"}, {label: "AST", value: "-a"}, {label: "SAST", value: "-s"}, {label: "LLVM IR", value: "-l"}, {label: "Tokens", value: "-ts"}];
   const [selectedOption, setSelectedOption] = useState(options[0].value);
