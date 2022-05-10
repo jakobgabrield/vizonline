@@ -22,5 +22,6 @@ opam init --auto-setup --yes --disable-sandboxing
 chmod +x viz.opam
 opam install . --deps-only --yes
 sudo apt install llvm
+eval $(opam config env)
 dune clean
 dune build
