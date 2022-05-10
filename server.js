@@ -27,7 +27,7 @@ app.post('/run', async (req, res) => {
     const filePath = await generateFile(content, language);
     try {
         let result = await executeProgram(filePath, args, false);
-        if (result === "" || result.endsWith("Translating Viz to LLVM code...")) {
+        if (result === "" || result.trim().endsWith("Translating Viz to LLVM code...")) {
             result = await executeProgram(filePath, args, true);
         }
         if (typeof result === 'object') {
