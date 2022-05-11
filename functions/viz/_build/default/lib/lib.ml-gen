@@ -1,0 +1,34 @@
+(** @canonical Lib.Ast *)
+module Ast = Lib__Ast
+
+
+(** @canonical Lib.Ast_fmt *)
+module Ast_fmt = Lib__Ast_fmt
+
+
+(** @canonical Lib.Irgen *)
+module Irgen = Lib__Irgen
+
+
+(** @canonical Lib.Parser *)
+module Parser = Lib__Parser
+
+
+(** @canonical Lib.Sast *)
+module Sast = Lib__Sast
+
+
+(** @canonical Lib.Sast_fmt *)
+module Sast_fmt = Lib__Sast_fmt
+
+
+(** @canonical Lib.Scanner *)
+module Scanner = Lib__Scanner
+
+
+(** @canonical Lib.Semant *)
+module Semant = Lib__Semant
+
+
+(** @canonical Lib.Token_fmt *)
+module Token_fmt = Lib__Token_fmt
