@@ -1,8 +1,9 @@
+#!/usr/bin/env bash
+
 # This shell script shamelessly borrow lot from pocaml: 
 # https://github.com/Pocaml/Pocaml/blob/main/pocamlc
 # Thank you, pocaml team! 
 
-#!/usr/bin/env bash
 # stop script when a command returns with non-zero
 set -e
 
@@ -77,7 +78,7 @@ CompileAndRun() {
 
 fpath=$1
 fname=${fpath##*/}
-[[ $fname != *.viz ]] && Usage
+#[[ $fname != *.viz ]] && Usage
 
 CompileAndRun
 
