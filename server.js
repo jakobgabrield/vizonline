@@ -33,22 +33,10 @@ app.post('/run', async (req, res) => {
         if (typeof result === 'object') {
             result = JSON.parse(JSON.stringify(res.data.error.stderr));
         }
-        // try {
-        //     fs.unlinkSync(`${__dirname}/viz/online_programs/${filePath}`);
-        // } catch(err) {
-        //     console.log(err);
-        // }
         res.json(result);
     } 
     catch (e) {
         console.log(e);
-        // try {
-        //     fs.unlinkSync(filePath);
-        //     res.json("Error");
-        // } catch(err) {
-        //     console.error(err);
-        //     res.json("Internal Error");
-        // }
         res.json({"error": e});
     }
 });
